@@ -1,0 +1,35 @@
+/**
+ * Enhanced Grid CSS
+ * Custom styling for improved child table UX
+ * Only applies to grids explicitly enhanced via Client Script
+ */
+
+/* No global styles - all styles are applied inline or via custom_css config option */
+
+/* Only essential styles that don't affect default grids */
+
+/* Row Actions - hidden by default */
+.grid-row-actions {
+    display: none !important;
+}
+
+/* Hide link field buttons when enhanced_link_clicks is enabled */
+/* This is applied via custom_css config */
+
+/* Read-only rows - prevent editing */
+.tablez-readonly-row .field-area {
+    display: none !important;
+}
+
+.tablez-readonly-row .static-area {
+    display: block !important;
+}
+
+.tablez-readonly-row input,
+.tablez-readonly-row select,
+.tablez-readonly-row textarea {
+    pointer-events: none !important;
+}
+
+/* End of file - all other styles removed to avoid affecting default grids */
+

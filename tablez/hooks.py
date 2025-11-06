@@ -25,8 +25,12 @@ app_license = "mit"
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/tablez/css/tablez.css"
-# app_include_js = "/assets/tablez/js/tablez.js"
+app_include_css = "/assets/tablez/css/enhanced_grid.css"
+app_include_js = [
+	"/assets/tablez/js/grid_utils.js",
+	"/assets/tablez/js/enhanced_grid.js",
+	"/assets/tablez/js/enhanced_grid_row.js"
+]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/tablez/css/tablez.css"
