@@ -2,34 +2,53 @@
  * Enhanced Grid CSS
  * Custom styling for improved child table UX
  * Only applies to grids explicitly enhanced via Client Script
+ * All styles are scoped to .tablez-enhanced-grid to avoid affecting default grids
  */
 
-/* No global styles - all styles are applied inline or via custom_css config option */
-
-/* Only essential styles that don't affect default grids */
-
-/* Row Actions - hidden by default */
-.grid-row-actions {
+/* Row Actions - hidden by default (only for enhanced grids) */
+.tablez-enhanced-grid .grid-row-actions {
     display: none !important;
 }
 
-/* Hide link field buttons when enhanced_link_clicks is enabled */
-/* This is applied via custom_css config */
-
-/* Read-only rows - prevent editing */
-.tablez-readonly-row .field-area {
+/* Read-only rows - prevent editing (only for enhanced grids) */
+.tablez-enhanced-grid .tablez-readonly-row .field-area {
     display: none !important;
 }
 
-.tablez-readonly-row .static-area {
+.tablez-enhanced-grid .tablez-readonly-row .static-area {
     display: block !important;
 }
 
-.tablez-readonly-row input,
-.tablez-readonly-row select,
-.tablez-readonly-row textarea {
+.tablez-enhanced-grid .tablez-readonly-row input,
+.tablez-enhanced-grid .tablez-readonly-row select,
+.tablez-enhanced-grid .tablez-readonly-row textarea {
     pointer-events: none !important;
 }
 
-/* End of file - all other styles removed to avoid affecting default grids */
+/* Actions column - layout properties only (width is set via JavaScript config) */
+.tablez-enhanced-grid .tablez-actions-column {
+    display: flex !important;
+    gap: 4px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    /* Width properties removed - controlled by column_widths config */
+}
+
+/* Actions column header alignment */
+.tablez-enhanced-grid .grid-heading-row .tablez-actions-column {
+    text-align: center !important;
+}
+
+/* Total row styling */
+.tablez-enhanced-grid .tablez-total-row {
+    background: #f8f9fa !important;
+    font-weight: bold !important;
+    border-top: 2px solid #dee2e6 !important;
+}
+
+.tablez-enhanced-grid .tablez-total-row .col {
+    padding: 10px 8px !important;
+}
+
+/* End of file - all styles scoped to .tablez-enhanced-grid */
 

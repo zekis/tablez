@@ -223,6 +223,17 @@
                 const $lastCol = this.row.find('.col:last-child');
                 if ($lastCol.length && !$lastCol.find('.tablez-actions-header').length) {
                     $lastCol.html('<span class="tablez-actions-header" style="font-weight: 600;">Actions</span>');
+
+                    // Force the header column to match the data column width
+                    $lastCol.css({
+                        'min-width': '120px',
+                        'width': '120px',
+                        'flex': '0 0 120px',
+                        'text-align': 'center'
+                    });
+
+                    // Add a class to identify this as the actions column header
+                    $lastCol.addClass('tablez-actions-column');
                 }
             }
             return;
@@ -277,12 +288,25 @@
             if (!hasDeleteBtn) {
                 console.log('Clearing and setting up column');
                 $lastCol.empty();
+
+                // Get the configured actions column width
+                const actionsWidth = config.actions_column_width || '120px';
+
+                // Force the column to be visible and have proper width
+                // This overrides any column width settings from DocType (e.g., width: 0)
                 $lastCol.css({
-                    'display': 'flex',
+                    'display': 'flex !important',
                     'gap': '4px',
                     'align-items': 'center',
-                    'justify-content': 'center'
+                    'justify-content': 'center',
+                    'min-width': actionsWidth,
+                    'width': actionsWidth,
+                    'max-width': actionsWidth,
+                    'flex': `0 0 ${actionsWidth}`
                 });
+
+                // Add a class to identify this as the actions column
+                $lastCol.addClass('tablez-actions-column');
             }
 
             // Only add Edit button if enabled, there's a link value, and it doesn't exist
@@ -319,9 +343,8 @@
             if (config.show_delete_button && !hasDeleteBtn) {
                 const $deleteBtn = $(`
                     <button class="btn btn-xs btn-danger tablez-delete-link"
-                            style="padding: 4px 12px;">
+                            style="padding: 4px 8px;" title="Delete">
                         <svg class="icon icon-xs"><use href="#icon-delete"></use></svg>
-                        Delete
                     </button>
                 `);
 
