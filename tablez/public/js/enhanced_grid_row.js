@@ -52,23 +52,34 @@
         // Skip if already setup, unless force_refresh is true
         if (this.enhanced_features_setup && !force_refresh) return;
 
-        // Initialize grid config if it doesn't exist
+        // Only setup enhanced features if this grid has been explicitly configured
+        if (!this.grid.wrapper.hasClass('tablez-enhanced-grid')) {
+            return;
+        }
+
+        // Grid must have enhanced_config if it has the marker class
         if (!this.grid.enhanced_config) {
-            this.grid.enhanced_config = {
-                enabled: true,
-                primary_link_field: null,
-                show_add_dialog: false,
-                enable_sorting: true,
-                enable_grouping: false,
-                group_by_field: null,
-                enhanced_link_clicks: true,
-                show_row_actions: true,
-                allow_row_reorder: true
-            };
+            console.warn('Grid has tablez-enhanced-grid class but no enhanced_config');
+            return;
         }
 
         const grid_config = this.grid.enhanced_config;
         if (!grid_config.enabled) return;
+
+        // Add/remove unsaved class based on row state
+        if (this.doc && this.row) {
+            // Check for truthy values (Frappe uses 1 for unsaved, undefined for saved)
+            // Use !! to convert to boolean, then check if true
+            const isUnsaved = !!(this.doc.__islocal || this.doc.__unsaved);
+
+            // Always remove first to ensure clean state
+            this.row.removeClass('tablez-unsaved-row');
+
+            // Then add if needed
+            if (isUnsaved) {
+                this.row.addClass('tablez-unsaved-row');
+            }
+        }
 
         // Only setup row click if enabled
         if (grid_config.enable_row_click) {
@@ -83,8 +94,29 @@
 
         this.enhance_link_fields(grid_config);
         this.add_row_actions(grid_config);
+        this.setup_row_hover();
 
         this.enhanced_features_setup = true;
+    };
+
+    /**
+     * Setup row hover effect
+     */
+    GridRowClass.prototype.setup_row_hover = function() {
+        // Skip if this is a header row (no doc)
+        if (!this.doc) return;
+
+        const $row = this.row;
+
+        $row.on('mouseenter', function() {
+            // Set background on the .col children directly - light pastel green
+            $(this).children().css('background-color', 'rgb(230, 245, 230)');
+        });
+
+        $row.on('mouseleave', function() {
+            // Clear background on the .col children
+            $(this).children().css('background-color', '');
+        });
     };
 
     /**
@@ -117,8 +149,23 @@
         // Add pointer cursor to indicate clickability
         this.row.css('cursor', 'pointer');
 
-        // Add title to indicate behavior
-        this.row.attr('title', `Click to open ${primary_link}, Shift+Click to edit row`);
+        // Generate tooltip text based on configuration
+        let tooltipText;
+        if (config.row_click_tooltip) {
+            // Use custom tooltip if provided
+            tooltipText = config.row_click_tooltip;
+        } else {
+            // Auto-generate tooltip based on actions
+            const normalClickAction = config.row_click_action || 'open_document';
+            const shiftClickAction = config.row_shift_click_action || 'open_editor';
+
+            const normalText = normalClickAction === 'open_editor' ? 'edit row' : `open ${primary_link}`;
+            const shiftText = shiftClickAction === 'open_editor' ? 'edit row' : `open ${primary_link}`;
+
+            tooltipText = `Click to ${normalText}, Shift+Click to ${shiftText}`;
+        }
+
+        this.row.attr('title', tooltipText);
 
         // Override the toggle_view to prevent automatic editing
         const original_toggle_view = this.toggle_view;
@@ -158,13 +205,20 @@
             e.stopImmediatePropagation();
             e.preventDefault();
 
-            // Check if shift key is pressed - open row editor
-            if (e.shiftKey) {
+            // Determine which action to take based on configuration
+            const normalClickAction = config.row_click_action || 'open_document';
+            const shiftClickAction = config.row_shift_click_action || 'open_editor';
+
+            // Select action based on Shift key
+            const action = e.shiftKey ? shiftClickAction : normalClickAction;
+
+            // Execute the appropriate action
+            if (action === 'open_editor') {
                 me.toggle_view(true);
                 return;
             }
 
-            // Get the link field value
+            // Otherwise, open the document (action === 'open_document')
             const link_value = me.doc[primary_link];
 
             if (link_value) {
@@ -193,10 +247,6 @@
         // Add listeners in CAPTURE phase (true parameter)
         rowElement.addEventListener('click', clickHandler, true);
         rowElement.addEventListener('dblclick', dblClickHandler, true);
-
-        // Add visual indicator that row is clickable
-        this.row.css('cursor', 'pointer');
-        this.row.attr('title', __('Click to open {0}, Shift+Click to edit row', [primary_link]));
     };
 
     /**
@@ -219,10 +269,10 @@
             const has_link_field = grid_meta.fields.some(f => f.fieldtype === 'Link');
 
             if (has_link_field) {
-                // Add "Actions" header
+                // Leave the header column empty (no label)
                 const $lastCol = this.row.find('.col:last-child');
-                if ($lastCol.length && !$lastCol.find('.tablez-actions-header').length) {
-                    $lastCol.html('<span class="tablez-actions-header" style="font-weight: 600;">Actions</span>');
+                if ($lastCol.length && !$lastCol.hasClass('tablez-actions-column')) {
+                    $lastCol.empty();
 
                     // Force the header column to match the data column width
                     $lastCol.css({
@@ -263,8 +313,6 @@
 
         const has_link = me.doc[link_field.fieldname];
 
-        console.log('enhance_link_fields for row:', me.doc.name, 'link_field:', link_field.fieldname, 'has_link:', has_link);
-
         // Hide the tiny default arrow in the link field
         if (has_link) {
             const $field = this.row.find(`[data-fieldname="${link_field.fieldname}"]`);
@@ -278,15 +326,10 @@
         const hasDeleteBtn = $lastCol.find('.tablez-delete-link').length > 0;
         const hasEditBtn = $lastCol.find('.tablez-edit-link').length > 0;
 
-        console.log('hasDeleteBtn:', hasDeleteBtn, 'hasEditBtn:', hasEditBtn, 'has_link:', has_link);
-
         // Always process if: no buttons exist, OR we have a link but no Edit button
         if ($lastCol.length && (!hasDeleteBtn || (has_link && !hasEditBtn))) {
-            console.log('Entering button creation block');
-
             // Only clear if we're rebuilding from scratch
             if (!hasDeleteBtn) {
-                console.log('Clearing and setting up column');
                 $lastCol.empty();
 
                 // Get the configured actions column width
@@ -311,14 +354,21 @@
 
             // Only add Edit button if enabled, there's a link value, and it doesn't exist
             if (config.show_edit_button && has_link && !hasEditBtn) {
-                console.log('Adding Edit button');
                 const $editBtn = $(`
-                    <button class="btn btn-xs btn-primary tablez-edit-link"
-                            style="padding: 4px 12px;">
-                        <svg class="icon icon-xs"><use href="#icon-edit"></use></svg>
-                        Edit
+                    <button class="btn btn-xs tablez-edit-link"
+                            style="padding: 2px 6px; background: transparent; border: none; color: var(--text-muted);"
+                            title="Edit ${link_field.options}">
+                        <svg class="icon icon-sm"><use href="#icon-edit"></use></svg>
                     </button>
                 `);
+
+                // Hover effect
+                $editBtn.on('mouseenter', function() {
+                    $(this).css('color', 'var(--primary)');
+                });
+                $editBtn.on('mouseleave', function() {
+                    $(this).css('color', 'var(--text-muted)');
+                });
 
                 $editBtn.on('click', function(e) {
                     e.stopPropagation();
@@ -342,22 +392,49 @@
             // Only add Delete button if enabled and it doesn't exist
             if (config.show_delete_button && !hasDeleteBtn) {
                 const $deleteBtn = $(`
-                    <button class="btn btn-xs btn-danger tablez-delete-link"
-                            style="padding: 4px 8px;" title="Delete">
-                        <svg class="icon icon-xs"><use href="#icon-delete"></use></svg>
+                    <button class="btn btn-xs tablez-delete-link"
+                            style="padding: 2px 6px; background: transparent; border: none; color: var(--text-muted);"
+                            title="Delete">
+                        <svg class="icon icon-sm"><use href="#icon-delete"></use></svg>
                     </button>
                 `);
+
+                // Hover effect
+                $deleteBtn.on('mouseenter', function() {
+                    $(this).css('color', 'var(--red-500)');
+                });
+                $deleteBtn.on('mouseleave', function() {
+                    $(this).css('color', 'var(--text-muted)');
+                });
 
                 $deleteBtn.on('click', function(e) {
                     e.stopPropagation();
 
-                    frappe.confirm(
-                        'Are you sure you want to delete this row?',
-                        function() {
-                            // Delete the row
-                            me.remove();
-                        }
-                    );
+                    const deleteRow = function() {
+                        // Delete the row
+                        me.remove();
+
+                        // Refresh the add button to show Save button if needed
+                        setTimeout(function() {
+                            if (me.grid && me.grid.setup_add_button) {
+                                me.grid.setup_add_button();
+                            }
+                        }, 100);
+                    };
+
+                    // Check if confirmation is enabled
+                    if (config.confirm_delete) {
+                        frappe.warn(
+                            __('Are you sure you want to delete this row?'),
+                            __('This action cannot be undone until you save the form.'),
+                            deleteRow,
+                            __('Delete'),
+                            false  // is_minimizable
+                        );
+                    } else {
+                        // Delete immediately without confirmation
+                        deleteRow();
+                    }
                 });
 
                 $lastCol.append($deleteBtn);

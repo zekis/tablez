@@ -50,5 +50,37 @@
     padding: 10px 8px !important;
 }
 
+/* Row hover effect */
+.tablez-enhanced-grid .grid-body .data-row:hover {
+    background-color: var(--bg-light-gray, #f8f9fa) !important;
+    transition: background-color 0.15s ease-in-out;
+}
+
+/* Don't apply hover to total row or add button row */
+.tablez-enhanced-grid .tablez-total-row:hover,
+.tablez-enhanced-grid .tablez-add-row-dummy:hover {
+    background-color: transparent !important;
+}
+
+/* Hide border on add button dummy row */
+.tablez-enhanced-grid .tablez-add-row-dummy {
+    border: none !important;
+}
+
+/* Unsaved rows - visual indicator */
+.tablez-enhanced-grid .tablez-unsaved-row {
+    background-color: #fffbea !important;
+    border-left: 3px solid #f59e0b !important;
+}
+
+.tablez-enhanced-grid .tablez-unsaved-row .static-area {
+    font-style: italic;
+    color: #92400e;
+}
+
+.tablez-enhanced-grid .tablez-unsaved-row:hover {
+    background-color: #fef3c7 !important;
+}
+
 /* End of file - all styles scoped to .tablez-enhanced-grid */
 

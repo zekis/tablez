@@ -78,7 +78,7 @@
                     if (me.grid_rows) {
                         me.grid_rows.forEach(row => {
                             if (row.setup_enhanced_row_features && row.doc) {
-                                row.setup_enhanced_row_features();
+                                row.setup_enhanced_row_features(true);  // Force refresh to update unsaved state
                             }
                         });
                     }
@@ -377,6 +377,11 @@
         const columns = config.columns || {};
         const totals = {};
 
+        // Safety check
+        if (!this.grid_rows) {
+            return totals;
+        }
+
         // Get all data rows
         const data = this.grid_rows
             .filter(row => row.doc && !row.doc.__islocal)
@@ -395,6 +400,7 @@
                     totals[fieldname] = values.reduce((a, b) => a + b, 0);
                     break;
                 case 'average':
+                case 'avg':  // Alias for average
                     totals[fieldname] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
                     break;
                 case 'count':
@@ -578,9 +584,14 @@
             </div>
         `);
 
-        // Get all columns from an actual data row
-        const $firstDataRow = this.wrapper.find('.grid-body .data-row:not(.tablez-add-row-dummy):not(.tablez-total-row)').first();
-        if (!$firstDataRow.length) return;
+        // Get all columns from an actual data row, or fall back to heading row if table is empty
+        let $firstDataRow = this.wrapper.find('.grid-body .data-row:not(.tablez-add-row-dummy):not(.tablez-total-row)').first();
+
+        // If no data rows exist (empty table), use heading row as template
+        if (!$firstDataRow.length) {
+            $firstDataRow = this.wrapper.find('.grid-heading-row').first();
+            if (!$firstDataRow.length) return;  // No heading row means grid not rendered yet
+        }
 
         const $allCols = $firstDataRow.find('.col');
 
@@ -598,7 +609,7 @@
 
                 const $addBtn = $(`
                     <button class="btn btn-xs btn-success">
-                        <svg class="icon icon-xs"><use href="#icon-add"></use></svg>
+                        <svg class="icon icon-xs" style="fill: white;"><use href="#icon-add"></use></svg>
                         ${buttonLabel}
                     </button>
                 `);
@@ -632,7 +643,44 @@
                     }
                 });
 
-                $firstCol.append($addBtn);
+                // Add Save button if enabled and there are unsaved changes
+                const $buttonContainer = $('<div style="display: flex; gap: 4px;"></div>');
+                $buttonContainer.append($addBtn);
+
+                if (me.enhanced_config.show_save_button) {
+                    // Check if there are any unsaved changes in the grid or form
+                    const hasUnsavedRowChanges = me.grid_rows && me.grid_rows.some(row =>
+                        row.doc && !!(row.doc.__islocal || row.doc.__unsaved)
+                    );
+
+                    // Also check if the parent form is dirty (e.g., after deleting rows)
+                    const formIsDirty = me.frm && me.frm.is_dirty && me.frm.is_dirty();
+
+                    const hasUnsavedChanges = hasUnsavedRowChanges || formIsDirty;
+
+                    if (hasUnsavedChanges) {
+                        const $saveBtn = $(`
+                            <button class="btn btn-xs btn-primary tablez-grid-save-btn">
+                                Save
+                            </button>
+                        `);
+
+                        $saveBtn.on('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            if (me.frm) {
+                                me.frm.save();
+                            } else {
+                                frappe.msgprint(__('Unable to save: Form not found'));
+                            }
+                        });
+
+                        $buttonContainer.append($saveBtn);
+                    }
+                }
+
+                $firstCol.append($buttonContainer);
                 $dummyRow.append($firstCol);
             } else {
                 // Other columns - empty
@@ -674,6 +722,16 @@
                 return;
             }
 
+            // Skip read-only fields
+            if (field.read_only) {
+                return;
+            }
+
+            // Skip hidden fields
+            if (field.hidden) {
+                return;
+            }
+
             // Add field to dialog
             dialog_fields.push({
                 fieldtype: field.fieldtype,
@@ -682,8 +740,7 @@
                 options: field.options,
                 reqd: field.reqd,
                 default: field.default,
-                description: field.description,
-                read_only: field.read_only
+                description: field.description
             });
         });
 
@@ -702,6 +759,11 @@
                         new_row[fieldname] = values[fieldname];
                     }
                 });
+
+                // Mark the form as dirty so Frappe knows there are changes
+                if (me.frm) {
+                    me.frm.dirty();
+                }
 
                 // Refresh the grid
                 me.refresh();
@@ -890,9 +952,14 @@
             enhanced_link_clicks: false,
             show_edit_button: false,
             show_delete_button: false,
+            show_save_button: true,  // Show Save button for unsaved rows
+            confirm_delete: true,  // Show confirmation dialog before deleting rows
             show_row_actions: false,
             allow_row_reorder: true,
             enable_row_click: false,
+            row_click_action: 'open_document',  // 'open_document' | 'open_editor'
+            row_shift_click_action: 'open_editor',  // 'open_document' | 'open_editor'
+            row_click_tooltip: null,  // Custom tooltip text (null = auto-generate)
             show_total_row: false,
             total_row_config: {
                 label: 'Total',
@@ -933,6 +1000,10 @@
                 });
             }
         }, 100);
+
+        // No custom after_save handling - let Frappe handle it naturally
+        // The grid's refresh() method will be called automatically by Frappe after save
+        // and our enhanced refresh will update the row states
     };
 
     /**
