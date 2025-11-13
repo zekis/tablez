@@ -1,0 +1,2 @@
+# Tablez Product DocType
+

@@ -5,6 +5,22 @@
  * All styles are scoped to .tablez-enhanced-grid to avoid affecting default grids
  */
 
+/* Hide grid until Tablez is ready to prevent flash (only for enhanced grids) */
+.frappe-control[data-fieldtype="Table"] .form-grid.tablez-enhanced-grid {
+    opacity: 0;
+    transition: opacity 0.15s ease-in;
+}
+
+/* Show grid when Tablez is ready */
+.frappe-control[data-fieldtype="Table"] .form-grid.tablez-enhanced-grid.tablez-ready {
+    opacity: 1 !important;
+}
+
+/* Fallback: show non-enhanced grids immediately */
+.frappe-control[data-fieldtype="Table"] .form-grid:not(.tablez-enhanced-grid) {
+    opacity: 1 !important;
+}
+
 /* Row Actions - hidden by default (only for enhanced grids) */
 .tablez-enhanced-grid .grid-row-actions {
     display: none !important;
@@ -56,15 +72,15 @@
     transition: background-color 0.15s ease-in-out;
 }
 
-/* Don't apply hover to total row or add button row */
-.tablez-enhanced-grid .tablez-total-row:hover,
-.tablez-enhanced-grid .tablez-add-row-dummy:hover {
+/* Don't apply hover to total row */
+.tablez-enhanced-grid .tablez-total-row:hover {
     background-color: transparent !important;
 }
 
-/* Hide border on add button dummy row */
-.tablez-enhanced-grid .tablez-add-row-dummy {
-    border: none !important;
+/* Tablez buttons in grid footer */
+.tablez-add-btn,
+.tablez-save-btn {
+    margin-right: 5px;
 }
 
 /* Unsaved rows - visual indicator */

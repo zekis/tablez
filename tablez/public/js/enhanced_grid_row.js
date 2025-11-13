@@ -44,11 +44,12 @@
             this.setup_enhanced_row_features();
         };
 
+
         /**
          * Setup enhanced row features
          * Can be called multiple times to re-enhance (e.g., after data changes)
          */
-        GridRowClass.prototype.setup_enhanced_row_features = function(force_refresh) {
+GridRowClass.prototype.setup_enhanced_row_features = function(force_refresh) {
         // Skip if already setup, unless force_refresh is true
         if (this.enhanced_features_setup && !force_refresh) return;
 
@@ -102,7 +103,7 @@
     /**
      * Setup row hover effect
      */
-    GridRowClass.prototype.setup_row_hover = function() {
+GridRowClass.prototype.setup_row_hover = function() {
         // Skip if this is a header row (no doc)
         if (!this.doc) return;
 
@@ -122,7 +123,7 @@
     /**
      * Setup click handler to open referenced document and make row read-only
      */
-    GridRowClass.prototype.setup_row_click_handler = function(config) {
+GridRowClass.prototype.setup_row_click_handler = function(config) {
         // Skip if this is a header row (no doc)
         if (!this.doc) return;
 
@@ -252,7 +253,7 @@
     /**
      * Enhance link fields with proper Edit/Delete buttons in Actions column
      */
-    GridRowClass.prototype.enhance_link_fields = function(config) {
+GridRowClass.prototype.enhance_link_fields = function(config) {
         // Skip if neither Edit nor Delete buttons are enabled
         if (!config.show_edit_button && !config.show_delete_button) {
             return;
@@ -445,14 +446,14 @@
     /**
      * Add quick action buttons to row
      */
-    GridRowClass.prototype.add_row_actions = function(config) {
+GridRowClass.prototype.add_row_actions = function(config) {
         if (!config.show_row_actions) return;
 
         // Skip if this is a header row (no doc)
         if (!this.doc) return;
 
         const me = this;
-        
+
         // Create actions container
         const $actions = $('<div class="grid-row-actions" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%);"></div>');
 
@@ -496,9 +497,9 @@
     /**
      * Duplicate current row
      */
-    GridRowClass.prototype.duplicate_row = function() {
+GridRowClass.prototype.duplicate_row = function() {
         const new_row = this.grid.add_new_row(this.doc.idx);
-        
+
         // Copy all field values except name and idx
         const meta = frappe.get_meta(this.doc.doctype);
         meta.fields.forEach(field => {
@@ -522,33 +523,34 @@
     /**
      * Insert row above current row
      */
-    GridRowClass.prototype.insert_row_above = function() {
-        const new_row = this.grid.add_new_row(this.doc.idx);
-        this.grid.refresh();
-        
-        // Scroll to new row
-        if (new_row && new_row.toggle_view) {
-            new_row.toggle_view(true);
-        }
-    };
+GridRowClass.prototype.insert_row_above = function() {
+    const new_row = this.grid.add_new_row(this.doc.idx);
+    this.grid.refresh();
 
-    /**
-     * Insert row below current row
-     */
-    GridRowClass.prototype.insert_row_below = function() {
-        const new_row = this.grid.add_new_row(this.doc.idx + 1);
-        this.grid.refresh();
-        
-        // Scroll to new row
-        if (new_row && new_row.toggle_view) {
-            new_row.toggle_view(true);
-        }
-    };
+    // Scroll to new row
+    if (new_row && new_row.toggle_view) {
+        new_row.toggle_view(true);
+    }
+};
 
-        // Mark as initialized
-        GridRowClass.prototype._enhanced_grid_row_initialized = true;
+/**
+ * Insert row below current row
+ */
+GridRowClass.prototype.insert_row_below = function() {
+    const new_row = this.grid.add_new_row(this.doc.idx + 1);
+    this.grid.refresh();
 
-        console.log('Enhanced Grid Row loaded successfully');
+    // Scroll to new row
+    if (new_row && new_row.toggle_view) {
+        new_row.toggle_view(true);
+    }
+};
+
+// Mark as initialized
+GridRowClass.prototype._enhanced_grid_row_initialized = true;
+
+console.log('Enhanced Grid Row loaded successfully');
+
     }
 })();
 
