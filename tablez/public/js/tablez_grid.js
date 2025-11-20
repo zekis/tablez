@@ -8,6 +8,66 @@
 
     let initialized = false;
 
+    function setup_tablez_save_hook(frm) {
+        if (!frm || frm._tablez_save_hook_installed) return;
+
+        console.log('[Tablez] Installing frm.save hook for form:', frm.doctype);
+        frm._tablez_save_hook_installed = true;
+
+        const original_save = frm.save;
+
+        frm.save = function(action, callback, btn) {
+            console.log('[Tablez] frm.save intercepted for Tablez-enhanced grids:', this.doctype);
+
+            const result = original_save.call(this, action, callback, btn);
+
+            const refreshGrids = function() {
+                if (!frm || !frm.fields_dict) return;
+
+                Object.keys(frm.fields_dict).forEach(function(fieldname) {
+                    const field = frm.fields_dict[fieldname];
+                    if (field.df.fieldtype === 'Table' && field.grid) {
+                        const grid = field.grid;
+
+                        if (grid.wrapper && grid.wrapper.hasClass('tablez-enhanced-grid')) {
+                            console.log('[Tablez] Refreshing grid after save:', fieldname);
+
+                            if (grid.refresh) {
+                                grid.refresh();
+                            }
+                            if (grid.setup_add_button) {
+                                grid.setup_add_button();
+                            }
+                        }
+                    }
+                });
+            };
+
+            const scheduleRefresh = function() {
+                if (!frm) return;
+
+                if (frm.reload_doc && typeof frm.reload_doc === 'function') {
+                    frm.reload_doc().then(function() {
+                        refreshGrids();
+                    });
+                } else {
+                    refreshGrids();
+                }
+            };
+
+            if (result && typeof result.then === 'function') {
+                result.then(function() {
+                    setTimeout(scheduleRefresh, 100);
+                });
+            } else {
+                setTimeout(scheduleRefresh, 200);
+            }
+
+            return result;
+        };
+    }
+
+
     // Wait for first form with table to load
     $(document).on('form-load', function() {
         if (initialized) return;
@@ -41,11 +101,15 @@
         const original_make = GridClass.prototype.make;
         const original_refresh = GridClass.prototype.refresh;
 
-        /**
+                /**
          * Override make() to setup enhanced features
          */
         GridClass.prototype.make = function() {
             original_make.call(this);
+
+            if (this.frm) {
+                setup_tablez_save_hook(this.frm);
+            }
 
             if (this.wrapper && this.wrapper.hasClass('tablez-enhanced-grid')) {
                 this.setup_enhanced_features();
@@ -673,6 +737,9 @@
                     return;
                 }
 
+                // Build dialog fields from child DocType meta, preserving important
+                // behaviors like fetch_from and link filters so standard Frappe
+                // logic continues to apply inside the dialog.
                 dialog_fields.push({
                     fieldtype: field.fieldtype,
                     fieldname: field.fieldname,
@@ -680,7 +747,15 @@
                     options: field.options,
                     reqd: field.reqd,
                     default: field.default,
-                    description: field.description
+                    description: field.description,
+                    // Respect child DocType metadata
+                    fetch_from: field.fetch_from,
+                    fetch_if_empty: field.fetch_if_empty,
+                    link_filters: field.link_filters,
+                    get_query: field.get_query,
+                    depends_on: field.depends_on,
+                    read_only_depends_on: field.read_only_depends_on,
+                    mandatory_depends_on: field.mandatory_depends_on
                 });
             });
 
@@ -691,9 +766,21 @@
                 primary_action: function(values) {
                     const new_row = me.add_new_row();
 
+                    // Use frappe.model.set_value when available so that standard
+                    // fetch_from and other field logic runs for the new child row.
+                    const cdt = new_row && new_row.doctype ? new_row.doctype : me.doctype;
+                    const cdn = new_row && new_row.name;
+
                     Object.keys(values).forEach(function(fieldname) {
-                        if (values[fieldname] !== undefined && values[fieldname] !== null) {
-                            new_row[fieldname] = values[fieldname];
+                        const value = values[fieldname];
+                        if (value === undefined || value === null) {
+                            return;
+                        }
+
+                        if (frappe.model && frappe.model.set_value && cdt && cdn) {
+                            frappe.model.set_value(cdt, cdn, fieldname, value);
+                        } else {
+                            new_row[fieldname] = value;
                         }
                     });
 
@@ -927,6 +1014,9 @@
      */
     function enhanceExistingGrids() {
         if (!cur_frm || !cur_frm.fields_dict) return;
+
+        // Ensure save hook is installed for current form
+        setup_tablez_save_hook(cur_frm);
 
         console.log('[Tablez] Enhancing existing grids on form:', cur_frm.doctype);
 
