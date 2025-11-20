@@ -77,11 +77,14 @@ Configure specific tables for advanced features:
 frappe.ui.form.on('Sales Order', {
     refresh: function(frm) {
         frm.fields_dict.items.grid.configure_enhanced_grid({
-            primary_link_field: 'item_code',  // Click row to open Item
-            show_add_dialog: true,             // Show dialog when adding
+            primary_link_field: 'item_code',   // Click row to open Item
+            show_add_button: true,             // Show custom add button
+            add_button_action: 'dialog',       // Show dialog when adding
             enable_sorting: true,              // Enable column sorting
             enable_grouping: true,             // Enable grouping
-            group_by_field: 'item_group'       // Group by Item Group
+            group_by_field: 'item_group',      // Group by Item Group
+            auto_column_width: true,           // Auto-distribute column widths
+            show_total_row: true               // Show totals at bottom
         });
     }
 });

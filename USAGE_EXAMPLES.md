@@ -70,12 +70,15 @@ frappe.ui.form.on('Sales Order', {
         // Configure items table
         if (frm.fields_dict.items && frm.fields_dict.items.grid) {
             frm.fields_dict.items.grid.configure_enhanced_grid({
-                primary_link_field: 'item_code',  // Click row to open Item
-                show_add_dialog: true,             // Show dialog when adding rows
+                primary_link_field: 'item_code',   // Click row to open Item
+                show_add_button: true,             // Show custom add button
+                add_button_action: 'dialog',       // Show dialog when adding rows
                 enable_sorting: true,              // Enable column sorting
                 enable_grouping: false,            // Disable grouping
                 enhanced_link_clicks: true,        // Make link fields more clickable
-                show_row_actions: true             // Show action buttons on hover
+                show_row_actions: true,            // Show action buttons on hover
+                auto_column_width: true,           // Auto-distribute column widths
+                show_total_row: true               // Show totals at bottom
             });
         }
     }
@@ -236,10 +239,12 @@ frappe.ui.form.on('BOM', {
         if (frm.fields_dict.items && frm.fields_dict.items.grid) {
             frm.fields_dict.items.grid.configure_enhanced_grid({
                 primary_link_field: 'item_code',
-                show_add_dialog: true,
+                show_add_button: true,
+                add_button_action: 'dialog',
                 enable_sorting: true,
                 enable_grouping: true,
-                group_by_field: 'item_group'
+                group_by_field: 'item_group',
+                auto_column_width: true
             });
         }
     }
@@ -259,10 +264,12 @@ frappe.ui.form.on('Timesheet', {
     refresh: function(frm) {
         if (frm.fields_dict.time_logs && frm.fields_dict.time_logs.grid) {
             frm.fields_dict.time_logs.grid.configure_enhanced_grid({
-                primary_link_field: 'project',  // Click to open Project
-                show_add_dialog: false,         // Quick add without dialog
+                primary_link_field: 'project',   // Click to open Project
+                show_add_button: true,           // Show custom add button
+                add_button_action: 'inline',     // Quick add without dialog
                 enable_sorting: true,
-                show_row_actions: true
+                show_row_actions: true,
+                auto_column_width: true
             });
         }
     }
@@ -276,12 +283,14 @@ frappe.ui.form.on('Quotation', {
     refresh: function(frm) {
         if (frm.fields_dict.items && frm.fields_dict.items.grid) {
             const grid = frm.fields_dict.items.grid;
-            
+
             // Configure enhanced grid
             grid.configure_enhanced_grid({
                 primary_link_field: 'item_code',
-                show_add_dialog: true,
-                enable_sorting: true
+                show_add_button: true,
+                add_button_action: 'dialog',
+                enable_sorting: true,
+                auto_column_width: true
             });
             
             // Add custom button to grid toolbar

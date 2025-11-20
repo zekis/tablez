@@ -306,12 +306,143 @@ This proves that Tablez can coexist with vanilla Frappe grids on the same form w
 - **Enable Grouping**: Group rows by field
 - **Allow Row Reorder**: Drag to reorder
 - **Show Row Actions**: Action buttons per row
+- **Show Edit Button**: Show edit icon for linked records
+- **Show Delete Button**: Show delete icon for rows
+
+### Row Click
+- **Enable Row Click**: Make rows clickable
+- **Row Click Action**: open_document/open_editor
+- **Row Shift Click Action**: Alternative action with Shift key
 
 ### Display
 - **Show Total Row**: Display totals at bottom
+- **Auto Column Width**: Automatically distribute column widths evenly
+- **Actions Column Width**: Width of actions column ('auto' or CSS value)
 - **Hide Row Numbers**: Hide idx column
 - **Hide Checkboxes**: Hide selection boxes
 - **Hide Edit Icon**: Hide edit icons
+
+---
+
+## Example Configuration Script
+
+Here's the complete configuration used in **Tablez Test** (from `tablez_test.js`):
+
+```javascript
+frappe.ui.form.on('Tablez Test', {
+    refresh: function(frm) {
+        // Wait for Tablez to load
+        setTimeout(function() {
+            if (frm.fields_dict.items && frm.fields_dict.items.grid) {
+                const grid = frm.fields_dict.items.grid;
+
+                // Check if configure_enhanced_grid is available
+                if (typeof grid.configure_enhanced_grid === 'function') {
+                    // Get saved config or use defaults
+                    const config = get_saved_config();
+
+                    // Apply configuration
+                    grid.configure_enhanced_grid(config);
+                }
+            }
+        }, 100);
+    }
+});
+
+function get_saved_config() {
+    // Try to load saved config from localStorage
+    const saved = localStorage.getItem('tablez_test_config');
+    if (saved) {
+        try {
+            return JSON.parse(saved);
+        } catch (e) {
+            console.error('Failed to parse saved config:', e);
+        }
+    }
+
+    // Default configuration
+    return {
+        // Basic Settings
+        enabled: true,
+        primary_link_field: 'item_name',
+        show_save_button: true,
+        confirm_delete: true,
+
+        // Add Button Settings
+        show_add_button: true,
+        add_button_label: 'Add Item',
+        add_button_action: 'inline',  // Options: 'inline', 'dialog', 'link'
+        hide_add_row_button: true,
+
+        // Row Features
+        enable_sorting: true,
+        enable_grouping: false,
+        allow_row_reorder: true,
+        show_row_actions: false,
+        show_edit_button: false,
+        show_delete_button: false,
+
+        // Row Click Settings
+        enable_row_click: false,
+        row_click_action: 'open_document',
+        row_shift_click_action: 'open_editor',
+        enhanced_link_clicks: false,
+
+        // Total Row Settings
+        show_total_row: true,
+        total_row_config: {
+            label: 'Total',
+            columns: {
+                quantity: 'sum',
+                amount: 'sum'
+            },
+            style: {
+                background: '#f8f9fa',
+                fontWeight: 'bold',
+                borderTop: '2px solid #dee2e6'
+            }
+        },
+
+        // Column Width Settings
+        column_widths: null,  // Or specify: { item_name: '200px', quantity: '100px' }
+        auto_column_width: false,  // Set to true for automatic even distribution
+        actions_column_width: 'auto',  // Auto-calculates based on enabled buttons
+
+        // Display Settings
+        hide_row_numbers: false,
+        hide_checkboxes: false,
+        hide_edit_icon: false,
+
+        // Custom CSS
+        custom_css: null
+    };
+}
+```
+
+### Key Configuration Notes
+
+**Add Button Action Options:**
+- `'inline'` - Adds row directly in the grid (fastest)
+- `'dialog'` - Opens a dialog form with all fields (best for complex forms)
+- `'link'` - Opens the linked DocType's new form (for creating master records)
+
+**Actions Column Width:**
+- `'auto'` - Automatically calculates based on enabled buttons (recommended)
+- `'120px'` - Manual pixel value
+- Calculation: Base (20px) + Edit (40px) + Delete (40px) + Save (80px) + gaps
+
+**Auto Column Width:**
+- When `true`, all data columns get equal width
+- Accounts for hidden columns (row numbers, checkboxes)
+- Reserves space for actions column
+- Uses CSS flexbox for perfect fit (no gaps)
+
+**Total Row Config:**
+- `columns`: Object mapping fieldname to aggregation type
+- Aggregation types: `'sum'`, `'avg'`, `'count'`, `'min'`, `'max'`
+- `style`: CSS properties for the total row
+
+---
 
 ## Troubleshooting
 

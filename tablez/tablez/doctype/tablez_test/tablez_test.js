@@ -3,13 +3,17 @@
 
 frappe.ui.form.on('Tablez Test', {
 	refresh: function(frm) {
-		// Add a button to open the Tablez configurator
+		// Add buttons to toolbar
 		if (!frm.is_new()) {
 			frm.add_custom_button(__('Configure Grid'), function() {
 				show_tablez_configurator(frm);
 			});
+
+			frm.add_custom_button(__('Copy Config Code'), function() {
+				show_config_code_dialog(frm);
+			});
 		}
-		
+
 		// Apply default Tablez configuration
 		apply_tablez_config(frm);
 	}
@@ -352,11 +356,156 @@ function show_tablez_configurator(frm) {
 				message: __('Configuration applied successfully'),
 				indicator: 'green'
 			});
-			
+
 			d.hide();
 		}
 	});
-	
+
 	d.show();
+}
+
+function show_config_code_dialog(frm) {
+	// Get current config
+	const config = get_saved_config();
+
+	// Generate the JavaScript code
+	const code = generate_config_code(config);
+
+	// Create dialog
+	const d = new frappe.ui.Dialog({
+		title: __('Generated Configuration Code'),
+		size: 'large',
+		fields: [
+			{
+				fieldtype: 'HTML',
+				fieldname: 'instructions',
+				options: `
+					<div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+						<p style="margin: 0; color: #666;">
+							<strong>📋 Copy this code to your DocType's client script</strong><br>
+							Replace <code>Your DocType</code> and <code>your_child_table</code> with your actual names.
+						</p>
+					</div>
+				`
+			},
+			{
+				fieldtype: 'Code',
+				fieldname: 'config_code',
+				label: __('Configuration Code'),
+				options: 'JavaScript',
+				default: code,
+				read_only: 1
+			}
+		],
+		primary_action_label: __('Copy to Clipboard'),
+		primary_action: function() {
+			// Copy to clipboard
+			navigator.clipboard.writeText(code).then(function() {
+				frappe.show_alert({
+					message: __('Configuration code copied to clipboard!'),
+					indicator: 'green'
+				});
+				d.hide();
+			}).catch(function(err) {
+				// Fallback for older browsers
+				const textarea = document.createElement('textarea');
+				textarea.value = code;
+				textarea.style.position = 'fixed';
+				textarea.style.opacity = '0';
+				document.body.appendChild(textarea);
+				textarea.select();
+				try {
+					document.execCommand('copy');
+					frappe.show_alert({
+						message: __('Configuration code copied to clipboard!'),
+						indicator: 'green'
+					});
+					d.hide();
+				} catch (e) {
+					frappe.msgprint(__('Failed to copy to clipboard. Please copy manually.'));
+				}
+				document.body.removeChild(textarea);
+			});
+		}
+	});
+
+	d.show();
+}
+
+function generate_config_code(config) {
+	// Helper to format value for JavaScript
+	function formatValue(value, indent = '') {
+		if (value === null || value === undefined) {
+			return 'null';
+		}
+		if (typeof value === 'string') {
+			return `'${value}'`;
+		}
+		if (typeof value === 'boolean' || typeof value === 'number') {
+			return String(value);
+		}
+		if (typeof value === 'object' && !Array.isArray(value)) {
+			const entries = Object.entries(value);
+			if (entries.length === 0) return '{}';
+
+			const innerIndent = indent + '\t\t';
+			const lines = entries.map(([key, val]) => {
+				return `${innerIndent}'${key}': ${formatValue(val, innerIndent)}`;
+			});
+			return '{\n' + lines.join(',\n') + '\n' + indent + '\t}';
+		}
+		return JSON.stringify(value);
+	}
+
+	// Generate the code
+	let code = `// Tablez Configuration
+// Generated from Tablez Test configurator
+
+frappe.ui.form.on('Your DocType', {
+\trefresh: function(frm) {
+\t\t// Configure your child table
+\t\tif (frm.fields_dict.your_child_table && frm.fields_dict.your_child_table.grid) {
+\t\t\tconst grid = frm.fields_dict.your_child_table.grid;
+\t\t\t
+\t\t\t// Using the recommended helper function (handles async loading)
+\t\t\ttablez.configure_grid(grid, {
+`;
+
+	// Add each config option
+	const configEntries = Object.entries(config);
+	configEntries.forEach(([key, value], index) => {
+		const isLast = index === configEntries.length - 1;
+		const comma = isLast ? '' : ',';
+
+		// Add comment for major sections
+		if (key === 'enabled') {
+			code += `\t\t\t\t// Basic Settings\n`;
+		} else if (key === 'show_add_button') {
+			code += `\t\t\t\t\n\t\t\t\t// Add Button Settings\n`;
+		} else if (key === 'enable_sorting') {
+			code += `\t\t\t\t\n\t\t\t\t// Row Features\n`;
+		} else if (key === 'show_edit_button') {
+			code += `\t\t\t\t\n\t\t\t\t// Row Action Buttons\n`;
+		} else if (key === 'enable_row_click') {
+			code += `\t\t\t\t\n\t\t\t\t// Row Click Settings\n`;
+		} else if (key === 'show_total_row') {
+			code += `\t\t\t\t\n\t\t\t\t// Total Row Settings\n`;
+		} else if (key === 'column_widths') {
+			code += `\t\t\t\t\n\t\t\t\t// Column Width Settings\n`;
+		} else if (key === 'hide_row_numbers') {
+			code += `\t\t\t\t\n\t\t\t\t// Display Settings\n`;
+		} else if (key === 'custom_css') {
+			code += `\t\t\t\t\n\t\t\t\t// Custom CSS\n`;
+		}
+
+		code += `\t\t\t\t${key}: ${formatValue(value, '\t\t\t\t')}${comma}\n`;
+	});
+
+	code += `\t\t\t});
+\t\t}
+\t}
+});`;
+
+	return code;
 }
 
