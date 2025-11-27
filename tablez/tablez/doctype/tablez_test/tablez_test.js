@@ -969,6 +969,9 @@ function generate_config_code_advanced(config, options = {}) {
 		return JSON.stringify(value);
 	}
 
+	// Get the custom dialog code if using custom action
+	const customDialogCode = config.add_button_action === 'custom' ? get_custom_dialog_code() : null;
+
 	// Build the config object body (with comments) at a given indent level
 	function buildConfigBody(indent) {
 		const configEntries = Object.entries(config || {});
@@ -977,6 +980,15 @@ function generate_config_code_advanced(config, options = {}) {
 		configEntries.forEach(([key, value], index) => {
 			const isLast = index === configEntries.length - 1;
 			const comma = isLast ? '' : ',';
+
+			// Skip custom_add_dialog - we reference the separate function by name
+			if (key === 'custom_add_dialog') {
+				if (customDialogCode && config.add_button_action === 'custom') {
+					body += `${indent}\n${indent}// Reference to custom dialog function defined above\n`;
+					body += `${indent}custom_add_dialog: custom_add_dialog${comma}\n`;
+				}
+				return;
+			}
 
 			// Add comment for major sections
 			if (key === 'enabled') {
@@ -1005,6 +1017,35 @@ function generate_config_code_advanced(config, options = {}) {
 		return body;
 	}
 
+	// Build the custom dialog function as a separate named function
+	function buildCustomDialogFunction() {
+		if (!customDialogCode || config.add_button_action !== 'custom') {
+			return '';
+		}
+
+		// Convert the anonymous function to a named function
+		// The stored code starts with "function(grid)" - we need to make it "function custom_add_dialog(grid)"
+		let fnCode = customDialogCode.trim();
+
+		// Replace "function(" or "function (" with "function custom_add_dialog("
+		if (fnCode.startsWith('function(') || fnCode.startsWith('function (')) {
+			fnCode = fnCode.replace(/^function\s*\(/, 'function custom_add_dialog(');
+		} else if (fnCode.startsWith('(grid)') || fnCode.startsWith('(grid) =>') || fnCode.startsWith('grid =>')) {
+			// Arrow function - wrap it
+			fnCode = `function custom_add_dialog(grid) {\n\treturn (${fnCode})(grid);\n}`;
+		}
+
+		return `/**
+ * Custom Add Dialog Function
+ * Called when add button is clicked with add_button_action: 'custom'
+ * @param {Object} grid - The grid instance
+ * @returns {Promise<string|object>} - Returns linked doc name or object with field values
+ */
+${fnCode}
+
+`;
+	}
+
 	// Normalize options
 	const targetDoctype = options.target_doctype || 'Your DocType';
 	const applyToAllTables = !!options.apply_to_all_tables;
@@ -1025,7 +1066,12 @@ function generate_config_code_advanced(config, options = {}) {
 	let code = `// Tablez Configuration
 // Generated from Tablez Test configurator
 
-frappe.ui.form.on('${targetDoctype}', {
+`;
+
+	// Add the custom dialog function as a separate named function (if using custom action)
+	code += buildCustomDialogFunction();
+
+	code += `frappe.ui.form.on('${targetDoctype}', {
 	refresh: function(frm) {
 `;
 
