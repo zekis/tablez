@@ -682,6 +682,13 @@
 
                                     if (me.frm) {
                                         me.frm.dirty();
+
+                                        // Refresh the table field to fetch Link display values
+                                        // This ensures newly added rows show proper link labels instead of IDs
+                                        const tableFieldname = me.df && me.df.fieldname;
+                                        if (tableFieldname) {
+                                            me.frm.refresh_field(tableFieldname);
+                                        }
                                     }
 
                                     me.refresh();
