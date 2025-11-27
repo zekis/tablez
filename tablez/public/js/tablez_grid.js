@@ -638,6 +638,71 @@
                     } else {
                         frappe.msgprint(__('No primary_link_field configured'));
                     }
+                } else if (action === 'custom') {
+                    const customDialogFn = me.enhanced_config.custom_add_dialog;
+                    if (typeof customDialogFn === 'function') {
+                        // Call the custom dialog function, passing the grid context
+                        const result = customDialogFn.call(me, me);
+
+                        // Handle both Promise and direct return
+                        Promise.resolve(result).then(function(returnValue) {
+                            if (returnValue) {
+                                // Add new row
+                                const new_row = me.add_new_row();
+                                const linkField = me.enhanced_config.primary_link_field;
+
+                                if (new_row) {
+                                    const cdt = new_row.doctype || me.doctype;
+                                    const cdn = new_row.name;
+
+                                    if (typeof returnValue === 'string') {
+                                        // Simple case: just the linked doc name
+                                        if (linkField) {
+                                            if (frappe.model && frappe.model.set_value && cdt && cdn) {
+                                                frappe.model.set_value(cdt, cdn, linkField, returnValue);
+                                            } else {
+                                                new_row[linkField] = returnValue;
+                                            }
+                                        }
+                                    } else if (typeof returnValue === 'object') {
+                                        // Object with field values to set
+                                        Object.keys(returnValue).forEach(function(fieldname) {
+                                            const value = returnValue[fieldname];
+                                            if (value === undefined || value === null) {
+                                                return;
+                                            }
+
+                                            if (frappe.model && frappe.model.set_value && cdt && cdn) {
+                                                frappe.model.set_value(cdt, cdn, fieldname, value);
+                                            } else {
+                                                new_row[fieldname] = value;
+                                            }
+                                        });
+                                    }
+
+                                    if (me.frm) {
+                                        me.frm.dirty();
+                                    }
+
+                                    me.refresh();
+
+                                    // Re-apply enhanced features to new row
+                                    me.grid_rows.forEach(function(grid_row) {
+                                        if (grid_row.doc && grid_row.setup_enhanced_row_features) {
+                                            grid_row.setup_enhanced_row_features(true);
+                                        }
+                                    });
+                                }
+                            }
+                        }).catch(function(err) {
+                            // User cancelled or error - do nothing (rejection is valid for cancel)
+                            if (err && err !== 'cancelled') {
+                                console.error('[Tablez] Custom dialog error:', err);
+                            }
+                        });
+                    } else {
+                        frappe.msgprint(__('custom_add_dialog function not configured'));
+                    }
                 }
             });
 
@@ -945,7 +1010,8 @@
                 primary_link_field: null,
                 show_add_button: false,
                 add_button_label: 'Add Row',
-                add_button_action: 'dialog',
+                add_button_action: 'dialog',  // 'dialog', 'inline', 'link', or 'custom'
+                custom_add_dialog: null,      // Function for 'custom' action, returns Promise<string|object>
                 enable_sorting: true,
                 enable_grouping: false,
                 enhanced_link_clicks: false,
